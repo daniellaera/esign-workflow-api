@@ -13,3 +13,15 @@ dist/
 /out/
 .DS_Store
 .idea/
+
+# Never commit key material, certificates, env files or generated documents.
+# (The test CA is created at runtime under ESIGN_DATA_DIR.)
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.pdf
+!samples/contract.pdf
+.env.*
+!.env.example
