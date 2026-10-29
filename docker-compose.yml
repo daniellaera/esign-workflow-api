@@ -1,0 +1,55 @@
+# Local stack: the API plus MongoDB as a single-node replica set
+# (a replica set is required for multi-document transactions).
+
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      # Initiates the replica set on first start, then reports healthy once this node is primary.
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - >-
+          try { rs.status() } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}) };
+          quit(db.hello().isWritablePrimary ? 0 : 1)
+      interval: 5s
+      timeout: 10s
+      start_period: 20s
+      retries: 20
+
+  api:
+    build: .
+    image: esign-workflow-api:local
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      ESIGN_API_KEY: ${ESIGN_API_KEY:-dev-api-key-change-me}
+      ESIGN_MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      ESIGN_PUBLIC_BASE_URL: http://localhost:8000
+      # Development conveniences; never enable these in production.
+      ESIGN_LOG_SIGNING_LINKS: "true"
+      ESIGN_EXPOSE_OUTBOX: "true"
+    env_file:
+      # Optional overrides, e.g. ESIGN_WEBHOOK_URL / ESIGN_WEBHOOK_SECRET.
+      - path: .env
+        required: false
+    volumes:
+      - api-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      start_period: 15s
+      retries: 10
+
+volumes:
+  mongo-data:
+  api-data:
