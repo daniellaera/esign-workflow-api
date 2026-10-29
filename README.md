@@ -6,6 +6,14 @@ Sequential document signing: upload a PDF, add signers, collect one real PAdES s
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
+## Live demo
+
+**[esign.daniellaera.com/docs](https://esign.daniellaera.com/docs)**: run the whole flow in Swagger. Click **Authorize** and use the public demo key `esign-demo-public-key`.
+
+- All data is deleted after 24 h. **Do not upload real or personal documents.** Signatures come from a test CA.
+- Limits: 2 MB per PDF, 5 signers per envelope, 30 requests/min and 10 new envelopes/hour per IP.
+- Demo only: `GET /envelopes/{id}/signing-link` returns the current signer's link, so no inbox is needed. No webhooks are sent.
+
 ![Architecture: FastAPI adapter, application core (use cases, pure domain, ports), adapters for MongoDB, storage, pyHanko and webhooks](docs/diagrams/architecture.svg)
 
 FastAPI · Pydantic v2 · MongoDB (PyMongo async, transactions) · pyHanko · Docker. More diagrams: [ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -81,6 +89,7 @@ sequenceDiagram
 | `GET` | `/sign/{token}/document` | The PDF to sign |
 | `POST` | `/sign/{token}` | Sign |
 | `POST` | `/sign/{token}/decline` | Decline |
+| `GET` | `/envelopes/{id}/signing-link` | Current signer's link (live demo only) |
 | `GET` | `/trust/test-ca.pem` | Test CA certificate |
 | `GET` | `/health/live`, `/health/ready` | Probes |
 
