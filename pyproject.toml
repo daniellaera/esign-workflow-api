@@ -1,0 +1,99 @@
+[project]
+name = "esign-workflow-api"
+version = "0.1.0"
+description = "Minimal document-signing workflow API: sequential signers, PAdES signatures, tamper-evident audit trail."
+authors = [{ name = "Daniel Laera" }]
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=50.0.2",
+    "email-validator>=2.3.0",
+    "fastapi>=0.162.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.2",
+    "pyhanko>=0.38.0",
+    "pyhanko-certvalidator>=0.33.0",
+    "pymongo>=4.19.0",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.13.6,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "esign"
+
+[dependency-groups]
+dev = [
+    "asgi-lifespan>=2.1.0",
+    "mypy>=2.4.1",
+    "pyhanko-cli>=0.6.0",
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1",
+    "pytest-cov>=7.1.0",
+    "respx>=0.23.1",
+    "ruff>=0.17.3",
+    "testcontainers>=4.15.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # bugbear
+    "UP",       # pyupgrade
+    "SIM",      # simplify
+    "S",        # bandit (security)
+    "ASYNC",    # async pitfalls
+    "RUF",
+    "PT",       # pytest style
+    "C4",       # comprehensions
+    "DTZ",      # timezone-aware datetimes
+]
+ignore = [
+    "RUF001",   # the CA name deliberately contains an en dash
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Asserts, dummy secrets and small blocking file operations are fine in tests.
+"tests/**" = ["S101", "S105", "S106", "ASYNC240"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+mypy_path = "src"
+files = ["src", "tests", "scripts"]
+
+[[tool.mypy.overrides]]
+# Neither ships type information.
+module = ["pyhanko.*", "asn1crypto.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: needs Docker (MongoDB via testcontainers)",
+]
+filterwarnings = ["error::pytest.PytestUnraisableExceptionWarning"]
+
+[tool.coverage.run]
+source = ["esign"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 85
+exclude_also = ["if TYPE_CHECKING:", "\\.\\.\\."]
