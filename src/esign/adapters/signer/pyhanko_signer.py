@@ -2,6 +2,7 @@
 
 Each signature is appended as an incremental update: the bytes covered by
 earlier signatures are left untouched, so every signature stays verifiable.
+Each signer also gets a visible stamp on the last page.
 """
 
 from datetime import timedelta
@@ -14,16 +15,45 @@ from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from pyhanko.pdf_utils.incremental_writer import IncrementalPdfFileWriter
+from pyhanko.pdf_utils.layout import AxisAlignment, Margins, SimpleBoxLayoutRule
 from pyhanko.pdf_utils.misc import PdfError
 from pyhanko.pdf_utils.reader import PdfFileReader
 from pyhanko.sign import fields, signers
 from pyhanko.sign.validation import async_validate_pdf_signature
+from pyhanko.stamp import TextStampStyle
 from pyhanko_certvalidator import ValidationContext
 from pyhanko_certvalidator.registry import SimpleCertificateStore
 
 from esign.adapters.signer.test_ca import LocalTestCA
 from esign.application.ports import Clock, SignatureCheck, SignerIdentity
 from esign.domain.errors import InvalidDocumentError
+
+# Visible stamps: two columns of five slots on the last page, filled top to
+# bottom, so up to ten signers (the API limit) never overlap. Units are PDF
+# points (1/72 inch), measured from the bottom-left corner of the page.
+STAMP_WIDTH, STAMP_HEIGHT, STAMP_GAP = 250, 56, 10
+STAMP_LEFT, STAMP_TOP = 72, 600
+STAMPS_PER_COLUMN = 5
+
+# Plain ASCII: the stamp uses a standard PDF font without an en dash glyph.
+STAMP_STYLE = TextStampStyle(
+    stamp_text="Signed by %(signer)s\n%(ts)s\nTEST - not qualified",
+    timestamp_format="%Y-%m-%d %H:%M:%S %Z",
+    border_width=1,
+    inner_content_layout=SimpleBoxLayoutRule(
+        x_align=AxisAlignment.ALIGN_MID,
+        y_align=AxisAlignment.ALIGN_MID,
+        margins=Margins(left=6, right=6, top=6, bottom=6),
+    ),
+)
+
+
+def stamp_box(position: int) -> tuple[int, int, int, int]:
+    """Rectangle (x1, y1, x2, y2) for the stamp of the signer at ``position`` (0-based)."""
+    column, row = divmod(position, STAMPS_PER_COLUMN)
+    x1 = STAMP_LEFT + column * (STAMP_WIDTH + STAMP_GAP)
+    y2 = STAMP_TOP - row * (STAMP_HEIGHT + STAMP_GAP)
+    return (x1, y2 - STAMP_HEIGHT, x1 + STAMP_WIDTH, y2)
 
 
 def _to_asn1_certificate(certificate: x509.Certificate) -> Any:
@@ -58,7 +88,7 @@ class PyHankoSignatureService:
             raise InvalidDocumentError(f"PDF could not be parsed: {exc}") from exc
 
     async def sign(
-        self, pdf: bytes, signer: SignerIdentity, *, field_name: str, reason: str
+        self, pdf: bytes, signer: SignerIdentity, *, field_name: str, reason: str, position: int
     ) -> bytes:
         issued = self._ca.issue(
             signer.name, signer.email, self._clock(), self._certificate_validity
@@ -77,8 +107,12 @@ class PyHankoSignatureService:
             name=signer.name,
             reason=reason,
         )
+        field = fields.SigFieldSpec(field_name, on_page=-1, box=stamp_box(position))
+        pdf_signer = signers.PdfSigner(
+            metadata, cms_signer, stamp_style=STAMP_STYLE, new_field_spec=field
+        )
         writer = IncrementalPdfFileWriter(BytesIO(pdf))
-        output = await signers.PdfSigner(metadata, cms_signer).async_sign_pdf(writer)
+        output = await pdf_signer.async_sign_pdf(writer)
         signed: bytes = output.getvalue()
         return signed
 

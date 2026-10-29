@@ -101,6 +101,7 @@ class SigningService:
             SignerIdentity(name=signer.name, email=signer.email),
             field_name=f"Signature{link.signer_index + 1}",
             reason=f"Signed via esign-workflow-api (envelope {envelope.id})",
+            position=link.signer_index,
         )
         signed_sha256 = sha256_hex(signed_pdf)
         await self._storage.put(signed_sha256, signed_pdf)
