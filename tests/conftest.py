@@ -30,7 +30,12 @@ def mongo_uri() -> Iterator[str]:
         .with_exposed_ports(27017)
         .waiting_for(LogMessageWaitStrategy("Waiting for connections"))
     )
-    with container:
+    try:
+        container.start()
+    except Exception as exc:
+        # testcontainers' error does not include mongod's own output; attach it.
+        raise RuntimeError(f"MongoDB failed to start:\n{_log_tail(container)}") from exc
+    try:
         container.exec(["mongosh", "--quiet", "--eval", "rs.initiate()"])
         uri = (
             f"mongodb://{container.get_container_host_ip()}:"
@@ -38,6 +43,18 @@ def mongo_uri() -> Iterator[str]:
         )
         _wait_for_primary(uri)
         yield uri
+    finally:
+        container.stop()
+
+
+def _log_tail(container: DockerContainer, max_chars: int = 4000) -> str:
+    try:
+        stdout, stderr = container.get_logs()
+    except Exception as exc:
+        return f"(no logs: {exc})"
+    finally:
+        container.stop()
+    return (stdout + stderr).decode(errors="replace")[-max_chars:]
 
 
 def _wait_for_primary(uri: str, timeout_seconds: float = 30) -> None:
