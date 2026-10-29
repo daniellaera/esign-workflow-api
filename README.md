@@ -3,7 +3,6 @@
 Sequential document signing: upload a PDF, add signers, collect one real PAdES signature each, with a tamper-evident audit trail.
 
 [![CI](https://github.com/daniellaera/esign-workflow-api/actions/workflows/ci.yml/badge.svg)](https://github.com/daniellaera/esign-workflow-api/actions/workflows/ci.yml)
-![Coverage](https://img.shields.io/badge/coverage-97%25-brightgreen)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
@@ -44,7 +43,7 @@ The result, `out/signed.pdf`, with one visible stamp per signer:
 
 ![Signed PDF with two stacked signature stamps](docs/img/signed-pdf.png)
 
-Interactive API docs: http://localhost:8000/docs (API key `dev-api-key-change-me`). Tests: `make test`. Lint and types: `make lint`.
+Interactive API docs: http://localhost:8000/docs (API key `dev-api-key-change-me`). Tests: `make test` (108 tests, 97% coverage). Lint and types: `make lint`.
 
 ## Signing flow
 
