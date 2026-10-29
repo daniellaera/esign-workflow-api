@@ -21,3 +21,4 @@ Concurrency control on top of that:
 - The client must retry on 409. We do not retry server-side, to keep each request's behaviour obvious.
 - Slow work (PDF signing) happens *before* the transaction opens, so transactions stay short.
 - Production would use a three-node replica set (or Atlas); the code does not change.
+- The version is **MongoDB 7.0**. MongoDB 8.x refuses to start on Linux kernels 6.19 and newer ([SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912), a TCMalloc/rseq incompatibility), and GitHub's runners use such a kernel. Nothing here needs 8.x features; move up once MongoDB ships a fix.

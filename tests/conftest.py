@@ -12,7 +12,9 @@ from testcontainers.core.wait_strategies import LogMessageWaitStrategy
 from esign.adapters.mongo.database import MongoDatabase, create_client, ensure_indexes
 
 SAMPLE_PDF = Path(__file__).resolve().parent.parent / "samples" / "contract.pdf"
-MONGO_IMAGE = "mongo:8.0"
+# Same version as docker-compose.yml. MongoDB 8.x refuses to start on Linux
+# kernels >= 6.19 (SERVER-121912), which GitHub's runners use; see ADR 0002.
+MONGO_IMAGE = "mongo:7.0"
 
 
 @pytest.fixture

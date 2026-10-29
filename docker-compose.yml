@@ -3,7 +3,8 @@
 
 services:
   mongo:
-    image: mongo:8.0
+    # 7.0, not 8.x: MongoDB 8.x does not start on Linux kernels >= 6.19 (see ADR 0002).
+    image: mongo:7.0
     command: ["--replSet", "rs0", "--bind_ip_all"]
     volumes:
       - mongo-data:/data/db
