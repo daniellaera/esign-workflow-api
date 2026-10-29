@@ -57,12 +57,15 @@ class RequestContextMiddleware:
             await response(scope, receive, send_with_request_id)
         finally:
             # Log the route template (/sign/{token}), never the raw path: it holds secrets.
-            route = scope.get("route")
-            logger.info(
+            route_path = getattr(scope.get("route"), "path", "<unmatched>")
+            # Probes hit /health every few seconds; keep them out of INFO logs.
+            level = logging.DEBUG if route_path.startswith("/health") else logging.INFO
+            logger.log(
+                level,
                 "request completed",
                 extra={
                     "method": scope["method"],
-                    "route": getattr(route, "path", "<unmatched>"),
+                    "route": route_path,
                     "status": status_code,
                     "duration_ms": round((time.perf_counter() - started) * 1000, 1),
                 },
