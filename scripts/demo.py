@@ -36,6 +36,17 @@ def check(response: httpx.Response) -> Any:
     return response.json() if "json" in response.headers.get("content-type", "") else None
 
 
+def current_signing_link(client: httpx.Client, envelope_id: str) -> str:
+    """Public demo: the demo-only endpoint. Local stack: the simulated outbox."""
+    response = client.get(f"/envelopes/{envelope_id}/signing-link")
+    if response.status_code != 404:
+        link: str = check(response)["signing_link"]
+        return link
+    outbox = check(client.get(f"/dev/outbox/{envelope_id}"))
+    latest: str = outbox[-1]["signing_link"]
+    return latest
+
+
 def wait_until_ready(client: httpx.Client, timeout_seconds: float = 60) -> None:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
@@ -73,9 +84,8 @@ def main() -> None:
         print(f"    status={check(client.post(f'/envelopes/{envelope_id}/send'))['status']}")
 
         for signer in SIGNERS:
-            outbox = check(client.get(f"/dev/outbox/{envelope_id}"))
-            link = outbox[-1]["signing_link"]
-            step(f"{signer['name']} opens the link from the outbox and signs")
+            link = current_signing_link(client, envelope_id)
+            step(f"{signer['name']} opens their signing link and signs")
             # Signers authenticate with the link alone, so no API key here.
             view = check(httpx.get(link, timeout=30))
             print(f"    signer #{view['you']['order']} of {len(view['signers'])}")

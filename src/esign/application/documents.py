@@ -3,6 +3,7 @@
 from esign.application.ports import BlobStorage, Clock, Database, SignatureService
 from esign.domain.common import new_id, sha256_hex
 from esign.domain.documents import Document, check_pdf_upload
+from esign.domain.errors import NotFoundError
 
 
 class DocumentService:
@@ -40,7 +41,11 @@ class DocumentService:
 
 async def load_pdf(storage: BlobStorage, sha256: str) -> bytes:
     """Read a stored PDF and check it still matches the hash it is stored under."""
-    data = await storage.get(sha256)
+    try:
+        data = await storage.get(sha256)
+    except FileNotFoundError as exc:
+        # Only expected in demo mode, where old files are purged.
+        raise NotFoundError("document file", sha256) from exc
     if sha256_hex(data) != sha256:
         raise RuntimeError(f"stored document {sha256} is corrupted")
     return data

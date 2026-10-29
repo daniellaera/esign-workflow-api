@@ -95,7 +95,7 @@ Management endpoints need `X-API-Key`; signing endpoints need only the token. Er
 - **Audit hash chain.** Each event hashes its predecessor; a unique index prevents forks. [ADR 0007](docs/adr/0007-audit-hash-chain.md)
 - **Webhooks.** Recorded in the transaction, sent after commit, every attempt stored. [ADR 0006](docs/adr/0006-webhook-delivery.md)
 
-All nine ADRs: [docs/adr](docs/adr/README.md).
+All ADRs: [docs/adr](docs/adr/README.md).
 
 ## Not a qualified signature
 

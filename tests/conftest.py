@@ -28,7 +28,8 @@ def mongo_uri() -> Iterator[str]:
     (transactions need a replica set). Started only if a test asks for it."""
     container = (
         DockerContainer(MONGO_IMAGE)
-        .with_command("--replSet rs0 --bind_ip_all")
+        # ttlMonitorSleepSecs=1 so retention (TTL index) tests run in seconds, not minutes.
+        .with_command("--replSet rs0 --bind_ip_all --setParameter ttlMonitorSleepSecs=1")
         .with_exposed_ports(27017)
         .waiting_for(LogMessageWaitStrategy("Waiting for connections"))
     )

@@ -13,3 +13,4 @@ Short records of decisions that are not obvious from the code. Format: context, 
 | [0007](0007-audit-hash-chain.md) | Audit trail as a per-envelope hash chain |
 | [0008](0008-idempotency-keys.md) | Idempotency keys for envelope creation |
 | [0009](0009-logging-without-secrets.md) | JSON logging without personal data or secrets |
+| [0010](0010-public-demo-mode.md) | Public demo mode: retention, limits, rate limiting |

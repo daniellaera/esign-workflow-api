@@ -18,7 +18,7 @@ from esign.application.ports import (
 )
 from esign.domain.audit import AuditEvent, AuditEventType, ChainVerification, verify_chain
 from esign.domain.common import sha256_hex
-from esign.domain.envelopes import Envelope
+from esign.domain.envelopes import Envelope, SignerStatus
 from esign.domain.errors import IdempotencyKeyReusedError, NotFoundError, ValidationError
 from esign.domain.webhooks import WebhookDelivery
 
@@ -63,6 +63,13 @@ class VerificationReport:
 
 
 @dataclass(frozen=True)
+class CurrentSigningLink:
+    envelope: Envelope
+    signer_index: int
+    message: OutboxMessage
+
+
+@dataclass(frozen=True)
 class AuditTrail:
     events: list[AuditEvent]
     verification: ChainVerification
@@ -76,15 +83,19 @@ class EnvelopeService:
         signatures: SignatureService,
         invitations: Invitations,
         *,
+        max_signers: int,
         clock: Clock,
     ) -> None:
         self._db = db
         self._storage = storage
         self._signatures = signatures
         self._invitations = invitations
+        self._max_signers = max_signers
         self._clock = clock
 
     async def create(self, request: NewEnvelope, idempotency_key: str | None) -> CreatedEnvelope:
+        if len(request.signers) > self._max_signers:
+            raise ValidationError(f"an envelope can have at most {self._max_signers} signers")
         fingerprint = request.fingerprint()
         if idempotency_key is not None:
             replay = await self._replay(idempotency_key, fingerprint)
@@ -169,6 +180,22 @@ class EnvelopeService:
     async def webhook_deliveries(self, envelope_id: str) -> list[WebhookDelivery]:
         await self._db.envelopes.get(envelope_id)
         return await self._db.webhooks.list_for_envelope(envelope_id)
+
+    async def current_signing_link(self, envelope_id: str) -> CurrentSigningLink:
+        """The link of the signer whose turn it is, read back from the outbox.
+
+        Demo mode only: in production the link exists only in the signer's email.
+        """
+        envelope = await self._db.envelopes.get(envelope_id)
+        index = envelope.current_signer_index
+        if index is None or envelope.signers[index].status is not SignerStatus.INVITED:
+            raise NotFoundError("open signing link for envelope", envelope_id)
+        signer = envelope.signers[index]
+        messages = await self._db.outbox.list_for_envelope(envelope_id)
+        for message in reversed(messages):
+            if message.recipient_email == signer.email:
+                return CurrentSigningLink(envelope, index, message)
+        raise NotFoundError("open signing link for envelope", envelope_id)
 
     async def outbox(self, envelope_id: str) -> list[OutboxMessage]:
         await self._db.envelopes.get(envelope_id)

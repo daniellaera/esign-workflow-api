@@ -10,7 +10,7 @@ from typing import Annotated, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, Field
 
-from esign.application.envelopes import AuditTrail, VerificationReport
+from esign.application.envelopes import AuditTrail, CurrentSigningLink, VerificationReport
 from esign.application.ports import OutboxMessage, SignatureCheck
 from esign.application.signing import SigningSession
 from esign.domain.audit import AuditValue
@@ -340,4 +340,28 @@ class SigningViewOut(_Response):
             signers=[
                 SigningSignerOut(order=s.order, name=s.name, status=s.status) for s in full.signers
             ],
+        )
+
+
+# --- Demo mode -------------------------------------------------------------------------
+
+
+class SigningLinkOut(_Response):
+    """Demo mode only. In production, signing links exist only in the signer's email."""
+
+    signer_order: int = Field(examples=[1])
+    signer_name: str = Field(examples=["Alice Example"])
+    signing_link: str = Field(examples=["https://example.com/sign/Fh3k…"])
+    token: str = Field(description="Use it with POST /sign/{token}", examples=["Fh3k…"])
+    link_expires_at: datetime | None = Field(examples=[EXAMPLE_TIME])
+
+    @classmethod
+    def from_link(cls, link: CurrentSigningLink) -> Self:
+        signer = link.envelope.signers[link.signer_index]
+        return cls(
+            signer_order=link.signer_index + 1,
+            signer_name=signer.name,
+            signing_link=link.message.signing_link,
+            token=link.message.signing_link.rsplit("/", 1)[-1],
+            link_expires_at=signer.link_expires_at,
         )

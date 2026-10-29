@@ -47,4 +47,5 @@ HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
 
 # Our middleware writes access logs (with route templates, not token-bearing paths).
-CMD ["uvicorn", "esign.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--proxy-headers"]
+# Proxy headers are handled in the app, trusting only ESIGN_TRUSTED_PROXIES.
+CMD ["uvicorn", "esign.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--no-access-log", "--no-proxy-headers"]

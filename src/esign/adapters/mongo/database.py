@@ -6,11 +6,12 @@ replica set, which costs nothing extra; see docs/adr/0002-mongodb-transactions.m
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import timedelta
 
 from pymongo import ASCENDING, AsyncMongoClient
 from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.asynchronous.database import AsyncDatabase
-from pymongo.errors import PyMongoError
+from pymongo.errors import OperationFailure, PyMongoError
 
 from esign.adapters.mongo.repositories import (
     MongoAuditRepository,
@@ -33,13 +34,26 @@ IDEMPOTENCY_KEYS = "idempotency_keys"
 
 IDEMPOTENCY_KEY_TTL_SECONDS = 24 * 3600
 
+# Demo-mode retention: collection -> timestamp field the TTL index expires on.
+RETENTION_INDEX = "retention_ttl"
+RETENTION_FIELDS = {
+    DOCUMENTS: "uploaded_at",
+    ENVELOPES: "created_at",
+    AUDIT_EVENTS: "occurred_at",
+    OUTBOX: "created_at",
+    WEBHOOK_DELIVERIES: "created_at",
+}
+_INDEX_NOT_FOUND = 27
+
 
 def create_client(uri: str) -> AsyncMongoClient[MongoDocument]:
     # tz_aware: return timezone-aware UTC datetimes instead of naive ones.
     return AsyncMongoClient(uri, tz_aware=True, uuidRepresentation="standard")
 
 
-async def ensure_indexes(db: AsyncDatabase[MongoDocument]) -> None:
+async def ensure_indexes(
+    db: AsyncDatabase[MongoDocument], *, retention: timedelta | None = None
+) -> None:
     """Idempotent; runs at startup. Creating them also creates the collections,
     which must exist before a transaction writes to them on older servers."""
     await db[ENVELOPES].create_index("signers.token_hash")
@@ -56,6 +70,26 @@ async def ensure_indexes(db: AsyncDatabase[MongoDocument]) -> None:
     await db[IDEMPOTENCY_KEYS].create_index(
         "created_at", expireAfterSeconds=IDEMPOTENCY_KEY_TTL_SECONDS
     )
+    await apply_retention(db, retention)
+
+
+async def apply_retention(db: AsyncDatabase[MongoDocument], retention: timedelta | None) -> None:
+    """Make MongoDB delete records older than ``retention`` (demo mode), or stop doing so.
+
+    The TTL indexes are dropped and recreated at every start, so changing or
+    disabling retention never leaves a stale index that keeps deleting data.
+    MongoDB's TTL monitor runs about once a minute.
+    """
+    for collection, field in RETENTION_FIELDS.items():
+        try:
+            await db[collection].drop_index(RETENTION_INDEX)
+        except OperationFailure as exc:
+            if exc.code != _INDEX_NOT_FOUND:
+                raise
+        if retention is not None:
+            await db[collection].create_index(
+                field, name=RETENTION_INDEX, expireAfterSeconds=int(retention.total_seconds())
+            )
 
 
 class MongoRepositories:

@@ -14,6 +14,7 @@ from esign.adapters.mongo.repositories import MongoDocument
 from esign.adapters.signer.pyhanko_signer import PyHankoSignatureService
 from esign.adapters.signer.test_ca import LocalTestCA
 from esign.adapters.storage.local import LocalBlobStorage
+from esign.adapters.storage.retention import FileRetentionTask
 from esign.adapters.webhook.httpx_sender import HttpxWebhookSender
 from esign.application.documents import DocumentService
 from esign.application.envelopes import EnvelopeService
@@ -37,15 +38,27 @@ class Container:
     envelopes: EnvelopeService
     signing: SigningService
     webhooks: WebhookDispatcher
+    # Demo mode only: deletes old PDF files (MongoDB TTL indexes handle the records).
+    file_retention: FileRetentionTask | None
 
     @classmethod
     async def start(cls, settings: Settings, clock: Clock) -> Self:
         mongo_client = create_client(settings.mongo_uri)
         mongo_db = mongo_client[settings.mongo_database]
-        await ensure_indexes(mongo_db)
+        retention = settings.demo_retention if settings.demo_mode else None
+        await ensure_indexes(mongo_db, retention=retention)
         database = MongoDatabase(mongo_client, mongo_db)
 
         storage = LocalBlobStorage(settings.data_dir / "documents")
+        file_retention = None
+        if retention is not None:
+            file_retention = FileRetentionTask(
+                storage,
+                retention=retention,
+                interval=settings.demo_cleanup_interval,
+                clock=clock,
+            )
+            file_retention.start()
         ca = LocalTestCA.load_or_create(settings.data_dir / "ca", clock())
         signatures = PyHankoSignatureService(
             ca, certificate_validity=settings.signer_certificate_validity, clock=clock
@@ -85,14 +98,24 @@ class Container:
                 max_upload_bytes=settings.max_upload_bytes,
                 clock=clock,
             ),
-            envelopes=EnvelopeService(database, storage, signatures, invitations, clock=clock),
+            envelopes=EnvelopeService(
+                database,
+                storage,
+                signatures,
+                invitations,
+                max_signers=settings.max_signers,
+                clock=clock,
+            ),
             signing=SigningService(
                 database, storage, signatures, invitations, webhooks, clock=clock
             ),
             webhooks=webhooks,
+            file_retention=file_retention,
         )
 
     async def close(self) -> None:
+        if self.file_retention is not None:
+            await self.file_retention.stop()
         await self.webhooks.shutdown(WEBHOOK_SHUTDOWN_GRACE_SECONDS)
         await self.http_client.aclose()
         await self.mongo_client.close()

@@ -16,7 +16,7 @@ def get_container(request: Request) -> Container:
 
 
 def get_client_info(request: Request) -> ClientInfo:
-    # Behind a proxy, run uvicorn with --proxy-headers so this is the real client.
+    # Behind a reverse proxy, list it in ESIGN_TRUSTED_PROXIES so this is the real client.
     user_agent = request.headers.get("user-agent")
     return ClientInfo(
         ip=request.client.host if request.client else None,

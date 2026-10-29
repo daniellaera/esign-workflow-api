@@ -1,5 +1,9 @@
 """Texts for the OpenAPI document served at /docs."""
 
+from datetime import timedelta
+
+from esign.config import Settings
+
 DESCRIPTION = """
 Sequential document signing with real PAdES signatures and a tamper-evident audit trail.
 
@@ -32,6 +36,7 @@ RFC 9457 problem details (`application/problem+json`). Domain errors have a stab
 | `urn:esign:problem:signing-link-not-found` | 404 |
 | `urn:esign:problem:signing-link-expired` | 410 |
 | `urn:esign:problem:signing-link-inactive` | 410 |
+| `urn:esign:problem:rate-limited` | 429 |
 
 ## Webhooks
 On `envelope.completed` and `envelope.declined`, a POST to `ESIGN_WEBHOOK_URL` with headers
@@ -46,5 +51,36 @@ TAGS = [
     {"name": "signing", "description": "Signer-facing. The token in the link is the credential."},
     {"name": "trust", "description": "The test CA certificate, for external validators."},
     {"name": "health", "description": "Kubernetes-style probes."},
+    {"name": "demo", "description": "Public demo only: read the current signing link."},
     {"name": "development", "description": "Simulated mailbox. Disabled unless configured."},
 ]
+
+
+def _duration(value: timedelta) -> str:
+    hours = value.total_seconds() / 3600
+    if hours >= 1:
+        return f"{hours:g} h"
+    return f"{value.total_seconds() / 60:g} min"
+
+
+def description(settings: Settings) -> str:
+    """The API description, with a warning banner first when demo mode is on."""
+    if not settings.demo_mode or settings.demo_api_key is None:
+        return DESCRIPTION
+    banner = f"""
+> ⚠️ **Public demo.** All data is deleted after {_duration(settings.demo_retention)}.
+> **Do not upload real or personal documents.** Signatures come from a TEST CA.
+
+**Demo API key:** `{settings.demo_api_key.get_secret_value()}` (click **Authorize**).
+Limits: {settings.max_upload_bytes // (1024 * 1024)} MB per PDF,
+{settings.max_signers} signers per envelope,
+{settings.rate_limit_per_minute} requests/min and
+{settings.envelope_limit_per_hour} new envelopes/hour per IP. No outgoing webhooks.
+
+**Try it:** `POST /documents` → `POST /envelopes` → `POST /envelopes/{{id}}/send` →
+`GET /envelopes/{{id}}/signing-link` → `POST /sign/{{token}}` (repeat for each signer) →
+`GET /envelopes/{{id}}/verify`.
+
+---
+"""
+    return banner + DESCRIPTION
