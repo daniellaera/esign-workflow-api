@@ -25,3 +25,6 @@ dist/
 !samples/contract.pdf
 .env.*
 !.env.example
+
+# Site-specific demo configuration (contains the operator API key).
+deploy/demo.env

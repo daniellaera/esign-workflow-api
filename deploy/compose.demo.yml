@@ -1,0 +1,68 @@
+# Public demo stack (ESIGN_DEMO_MODE on). Site-specific values live in
+# deploy/demo.env, which is not committed; see deploy/demo.env.example.
+# Deploy or update: deploy/redeploy.sh
+
+name: esign-demo
+
+services:
+  mongo:
+    image: mongo:7.0
+    # Small WiredTiger cache to stay well inside the memory limit.
+    command: ["--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.25"]
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    # No "ports": MongoDB is reachable only from the api container.
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test:
+        - CMD
+        - mongosh
+        - --quiet
+        - --eval
+        - >-
+          try { rs.status() } catch (e) { rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'mongo:27017'}]}) };
+          quit(db.hello().isWritablePrimary ? 0 : 1)
+      interval: 10s
+      timeout: 10s
+      start_period: 20s
+      retries: 20
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  api:
+    build: ..
+    image: esign-workflow-api:demo
+    restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.5
+    depends_on:
+      mongo:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - demo.env
+    environment:
+      ESIGN_MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      ESIGN_DEMO_MODE: "true"
+      # Signing links are only available through the demo endpoint, never in logs.
+      ESIGN_LOG_SIGNING_LINKS: "false"
+      ESIGN_EXPOSE_OUTBOX: "false"
+    volumes:
+      - api-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 20s
+      retries: 10
+    logging: *logging
+
+volumes:
+  mongo-data:
+  api-data:
