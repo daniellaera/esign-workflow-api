@@ -9,6 +9,7 @@ The final PDF must carry one real PAdES signature per signer. Remote-signing ser
 - A local CA, created with `cryptography` on first start and persisted to the data volume, named **"TEST CA – NOT QUALIFIED"**.
 - For each signature: a fresh EC P-256 key and a certificate valid for one hour (configurable) with the signer's name and email in the subject, key usage `digitalSignature` + `nonRepudiation`. The key is used once and discarded.
 - pyHanko signs with subfilter `ETSI.CAdES.detached` (PAdES baseline B-B), SHA-256, as an **incremental update**, so earlier signatures remain valid.
+- Each signature has a **visible stamp** on the last page (name, time, "TEST - not qualified"). Stamps fill two columns of five fixed slots, so up to ten signers never overlap. pyHanko classifies the added stamp as form filling, which earlier signatures permit.
 - Verification builds a pyHanko `ValidationContext` with the test CA as the only trust root, no network fetching, revocation checking in soft-fail mode.
 - **Validation time = the signing time claimed in the signature.** Validating "now" would mark every signature invalid an hour after signing, when its certificate expires.
 
