@@ -3,6 +3,7 @@ name = "esign-workflow-api"
 version = "0.1.0"
 description = "Minimal document-signing workflow API: sequential signers, PAdES signatures, tamper-evident audit trail."
 authors = [{ name = "Daniel Laera" }]
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "cryptography>=50.0.2",
