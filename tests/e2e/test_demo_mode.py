@@ -162,3 +162,11 @@ async def test_signing_link_endpoint_does_not_exist_outside_demo_mode(
     spec = (await client.get("/openapi.json")).json()
     assert "/envelopes/{envelope_id}/signing-link" not in spec["paths"]
     assert "Public demo" not in spec["info"]["description"]
+
+
+async def test_root_redirect_is_never_rate_limited(make_demo_client: DemoClientFactory) -> None:
+    http = await make_demo_client(rate_limit_per_minute=1)
+    statuses = {(await http.get("/")).status_code for _ in range(5)}
+    assert statuses == {307}
+    # The limit still applies to everything else.
+    assert [(await http.get("/envelopes/x")).status_code for _ in range(2)] == [404, 429]

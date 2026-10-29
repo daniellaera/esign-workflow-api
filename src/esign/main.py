@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from esign.adapters.http.middleware import RequestContextMiddleware
@@ -54,6 +55,11 @@ def create_app(settings: Settings | None = None, *, clock: Clock = utc_now) -> F
         # Only these peers may set the client address via X-Forwarded-For.
         app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=settings.trusted_proxies)
     install_problem_handlers(app)
+
+    @app.get("/", include_in_schema=False)
+    async def root() -> RedirectResponse:
+        """Send visitors of the bare domain to the interactive API docs."""
+        return RedirectResponse("/docs", status_code=307)
 
     app.include_router(health.router)
     app.include_router(documents.router)

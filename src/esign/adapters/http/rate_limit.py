@@ -19,6 +19,8 @@ from esign.adapters.http.problems import TYPE_PREFIX, problem_response
 
 # Probes must never be throttled, or the orchestrator would restart a healthy app.
 EXEMPT_PREFIXES = ("/health",)
+# Exact paths: the root only redirects to /docs.
+EXEMPT_PATHS = frozenset({"/"})
 # Bound the counter table; expired windows are pruned once it grows past this.
 _PRUNE_THRESHOLD = 10_000
 
@@ -73,7 +75,11 @@ class RateLimitMiddleware:
         self.limiter = limiter
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or scope["path"].startswith(EXEMPT_PREFIXES):
+        if (
+            scope["type"] != "http"
+            or scope["path"] in EXEMPT_PATHS
+            or scope["path"].startswith(EXEMPT_PREFIXES)
+        ):
             await self.app(scope, receive, send)
             return
 

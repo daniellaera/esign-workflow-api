@@ -1,4 +1,10 @@
-from esign.adapters.http.rate_limit import FixedWindowLimiter, RateLimitRule, demo_rules
+from esign.adapters.http.rate_limit import (
+    EXEMPT_PATHS,
+    EXEMPT_PREFIXES,
+    FixedWindowLimiter,
+    RateLimitRule,
+    demo_rules,
+)
 
 
 class ManualClock:
@@ -50,3 +56,8 @@ def test_rule_matching() -> None:
     assert not envelopes.matches("GET", "/envelopes")
     assert not envelopes.matches("POST", "/envelopes/x/send")
     assert RateLimitRule("any", 1, 60).matches("DELETE", "/whatever")
+
+
+def test_root_is_exempt_but_not_a_prefix_for_everything() -> None:
+    assert "/" in EXEMPT_PATHS
+    assert not "/envelopes".startswith(EXEMPT_PREFIXES)

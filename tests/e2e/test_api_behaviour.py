@@ -238,3 +238,10 @@ async def test_failing_webhook_is_marked_failed_after_retries(
     assert delivery["status"] == "FAILED"
     assert len(delivery["attempts"]) == 4
     assert "ConnectError" in delivery["attempts"][0]["error"]
+
+
+async def test_root_redirects_to_docs_and_is_not_documented(client: httpx.AsyncClient) -> None:
+    response = await client.get("/", headers={"X-API-Key": ""})
+    assert response.status_code == 307
+    assert response.headers["location"] == "/docs"
+    assert "/" not in (await client.get("/openapi.json")).json()["paths"]
