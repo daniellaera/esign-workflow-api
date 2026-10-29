@@ -1,0 +1,16 @@
+# Local Kroki, used only to render diagrams. No external service is called.
+name: esign-kroki
+
+services:
+  kroki:
+    image: yuzutech/kroki:0.34.0
+    environment:
+      KROKI_EXCALIDRAW_HOST: excalidraw
+      KROKI_MERMAID_HOST: mermaid
+    ports:
+      - "127.0.0.1:18000:8000"
+    depends_on: [excalidraw, mermaid]
+  excalidraw:
+    image: yuzutech/kroki-excalidraw:0.34.0
+  mermaid:
+    image: yuzutech/kroki-mermaid:0.34.0

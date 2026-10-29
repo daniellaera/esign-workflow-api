@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help install up down logs fmt lint test demo clean
+.PHONY: help install up down logs fmt lint test demo docs clean
 
 export ESIGN_API_KEY ?= dev-api-key-change-me
 
@@ -33,7 +33,12 @@ test: ## Run all tests with coverage (needs Docker for MongoDB)
 demo: ## Run the full flow against the running stack; writes out/signed.pdf
 	uv run python scripts/demo.py
 	@echo "==> Independent check with the pyHanko CLI"
-	uv run pyhanko sign validate --pretty-print --trust out/test-ca.pem --trust-replace out/signed.pdf
+	uv run pyhanko sign validate --executive-summary --trust out/test-ca.pem --trust-replace out/signed.pdf
+
+docs: ## Regenerate diagrams (local Kroki in Docker) and docs/img/signed-pdf.png; needs rsvg-convert, pdftoppm and a prior make demo
+	uv run python scripts/diagrams/generate_excalidraw.py
+	uv run python scripts/diagrams/render.py
+	pdftoppm -png -r 110 -singlefile -x 0 -y 0 -W 909 -H 620 out/signed.pdf docs/img/signed-pdf
 
 clean: ## Remove caches and generated output
 	rm -rf out .pytest_cache .mypy_cache .ruff_cache .coverage htmlcov
