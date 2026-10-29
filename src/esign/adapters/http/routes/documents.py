@@ -15,9 +15,9 @@ router = APIRouter(
 )
 
 
-@router.post("/documents", status_code=status.HTTP_201_CREATED)
+@router.post("/documents", status_code=status.HTTP_201_CREATED, summary="Upload a PDF")
 async def upload_document(file: UploadFile, container: ContainerDep) -> DocumentOut:
-    """Upload a PDF (multipart field ``file``). Returns its id and SHA-256."""
+    """Multipart field `file`, max 10 MB. Returns the document id and its SHA-256."""
     limit = container.settings.max_upload_bytes
     # Starlette has already spooled the upload to a temp file, so memory is
     # not at risk; a reverse proxy should still cap the body size upstream.

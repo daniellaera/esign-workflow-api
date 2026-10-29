@@ -7,6 +7,7 @@ router = APIRouter(prefix="/trust", tags=["trust"])
 
 @router.get(
     "/test-ca.pem",
+    summary="Test CA certificate (PEM)",
     response_class=Response,
     responses={200: {"content": {"application/x-pem-file": {}}}},
 )

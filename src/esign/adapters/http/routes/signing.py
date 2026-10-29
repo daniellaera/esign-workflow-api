@@ -24,7 +24,7 @@ def _private(response: Response) -> None:
     response.headers.update(_PRIVATE_HEADERS)
 
 
-@router.get("/{token}")
+@router.get("/{token}", summary="View what to sign")
 async def view(
     token: Token, response: Response, container: ContainerDep, client: ClientInfoDep
 ) -> SigningViewOut:
@@ -35,15 +35,17 @@ async def view(
 
 @router.get(
     "/{token}/document",
+    summary="Download the PDF to sign",
     response_class=Response,
     responses={200: {"content": {"application/pdf": {}}, "description": "The PDF to sign"}},
 )
 async def document(token: Token, container: ContainerDep) -> Response:
+    """The current revision, including earlier signers' signatures."""
     pdf = await container.signing.document(token)
     return Response(content=pdf, media_type="application/pdf", headers=_PRIVATE_HEADERS)
 
 
-@router.post("/{token}")
+@router.post("/{token}", summary="Sign")
 async def sign(
     token: Token, response: Response, container: ContainerDep, client: ClientInfoDep
 ) -> SigningViewOut:
@@ -52,7 +54,7 @@ async def sign(
     return SigningViewOut.from_session(await container.signing.sign(token, client))
 
 
-@router.post("/{token}/decline")
+@router.post("/{token}/decline", summary="Decline")
 async def decline(
     token: Token,
     response: Response,

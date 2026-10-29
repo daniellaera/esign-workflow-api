@@ -28,6 +28,12 @@ def _ascii_only(value: str) -> str:
 
 SignerEmail = Annotated[EmailStr, AfterValidator(_ascii_only)]
 
+# Values shown in the OpenAPI docs (/docs).
+EXAMPLE_ID = "6f1c2a7e9b0d4c3fa5e8b2d1c0f9e8a7"
+EXAMPLE_SHA256 = "8ffa7858c44c25c3482b727bf2338c5ccdd521442c705310bf26730c3cd18c7d"
+EXAMPLE_TIME = "2026-10-29T13:22:46.123Z"
+SHA256_HEX = "SHA-256, lowercase hex"
+
 
 class _Response(BaseModel):
     model_config = ConfigDict(frozen=True)
@@ -37,11 +43,11 @@ class _Response(BaseModel):
 
 
 class DocumentOut(_Response):
-    id: str
-    filename: str
-    size_bytes: int
-    sha256: str
-    uploaded_at: datetime
+    id: str = Field(examples=[EXAMPLE_ID])
+    filename: str = Field(examples=["contract.pdf"])
+    size_bytes: int = Field(examples=[1024])
+    sha256: str = Field(description=SHA256_HEX, examples=[EXAMPLE_SHA256])
+    uploaded_at: datetime = Field(examples=[EXAMPLE_TIME])
 
     @classmethod
     def from_domain(cls, document: Document) -> Self:
@@ -59,36 +65,58 @@ class DocumentOut(_Response):
 
 class SignerIn(BaseModel):
     # 64 characters is the X.509 upper bound for a common name.
-    name: str = Field(min_length=1, max_length=64)
-    email: SignerEmail
+    name: str = Field(min_length=1, max_length=64, examples=["Alice Example"])
+    email: SignerEmail = Field(examples=["alice@example.com"])
 
 
 class EnvelopeIn(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "title": "Service agreement",
+                    "document_id": EXAMPLE_ID,
+                    "signers": [
+                        {"name": "Alice Example", "email": "alice@example.com"},
+                        {"name": "Bob Example", "email": "bob@example.com"},
+                    ],
+                }
+            ]
+        }
+    )
+
     title: str = Field(min_length=1, max_length=200)
-    document_id: str = Field(min_length=1, max_length=64)
-    signers: list[SignerIn] = Field(min_length=1, max_length=10, description="Signing order")
+    document_id: str = Field(min_length=1, max_length=64, description="Id from POST /documents")
+    signers: list[SignerIn] = Field(
+        min_length=1, max_length=10, description="In signing order: the first signs first"
+    )
 
 
 class SignerOut(_Response):
-    order: int
-    name: str
-    email: str
+    order: int = Field(description="1-based position in the signing order", examples=[1])
+    name: str = Field(examples=["Alice Example"])
+    email: str = Field(examples=["alice@example.com"])
     status: SignerStatus
-    link_expires_at: datetime | None
+    link_expires_at: datetime | None = Field(
+        description="Set once this signer has been invited", examples=[EXAMPLE_TIME]
+    )
     signed_at: datetime | None
     declined_at: datetime | None
     decline_reason: str | None
 
 
 class EnvelopeDocumentOut(_Response):
-    id: str
-    original_sha256: str
-    current_sha256: str
+    id: str = Field(examples=[EXAMPLE_ID])
+    original_sha256: str = Field(description="Hash of the uploaded PDF", examples=[EXAMPLE_SHA256])
+    current_sha256: str = Field(
+        description="Hash of the latest revision (changes with every signature)",
+        examples=[EXAMPLE_SHA256],
+    )
 
 
 class EnvelopeOut(_Response):
-    id: str
-    title: str
+    id: str = Field(examples=[EXAMPLE_ID])
+    title: str = Field(examples=["Service agreement"])
     status: EnvelopeStatus
     document: EnvelopeDocumentOut
     signers: list[SignerOut]
@@ -128,14 +156,20 @@ class EnvelopeOut(_Response):
 
 
 class SignatureCheckOut(_Response):
-    field_name: str
-    signer_name: str | None
-    signer_email: str | None
-    signing_time: datetime | None
-    intact: bool
-    valid: bool
-    chain_valid: bool
-    modification_level: str
+    field_name: str = Field(examples=["Signature1"])
+    signer_name: str | None = Field(
+        description="From the certificate subject", examples=["Alice Example"]
+    )
+    signer_email: str | None = Field(examples=["alice@example.com"])
+    signing_time: datetime | None = Field(
+        description="As claimed by the signer", examples=[EXAMPLE_TIME]
+    )
+    intact: bool = Field(description="The signed bytes are unchanged")
+    valid: bool = Field(description="The cryptographic signature verifies")
+    chain_valid: bool = Field(description="The certificate chains up to the test CA")
+    modification_level: str = Field(
+        description="What changed after this signature, per pyHanko", examples=["FORM_FILLING"]
+    )
 
     @classmethod
     def from_check(cls, check: SignatureCheck) -> Self:
@@ -152,11 +186,15 @@ class SignatureCheckOut(_Response):
 
 
 class VerificationOut(_Response):
-    envelope_id: str
+    envelope_id: str = Field(examples=[EXAMPLE_ID])
     status: EnvelopeStatus
-    document_sha256: str
-    document_sha256_matches_record: bool
-    all_signatures_valid: bool
+    document_sha256: str = Field(
+        description="Hash of the PDF that was just verified", examples=[EXAMPLE_SHA256]
+    )
+    document_sha256_matches_record: bool = Field(
+        description="That hash equals the one stored for the envelope"
+    )
+    all_signatures_valid: bool = Field(description="At least one signature, and all pass")
     signatures: list[SignatureCheckOut]
 
     @classmethod
@@ -174,19 +212,19 @@ class VerificationOut(_Response):
 
 
 class AuditEventOut(_Response):
-    sequence: int
-    type: str
-    occurred_at: datetime
-    actor: str
-    data: dict[str, AuditValue]
-    previous_hash: str
-    hash: str
+    sequence: int = Field(examples=[1])
+    type: str = Field(examples=["signer.signed"])
+    occurred_at: datetime = Field(examples=[EXAMPLE_TIME])
+    actor: str = Field(examples=["signer:alice@example.com"])
+    data: dict[str, AuditValue] = Field(examples=[{"signer_index": 0, "ip": "203.0.113.7"}])
+    previous_hash: str = Field(description="Hash of the previous event (64 zeros for the first)")
+    hash: str = Field(description="SHA-256 over this event's canonical JSON")
 
 
 class AuditTrailOut(_Response):
-    envelope_id: str
-    chain_valid: bool
-    broken_at_sequence: int | None
+    envelope_id: str = Field(examples=[EXAMPLE_ID])
+    chain_valid: bool = Field(description="Every hash recomputes and links to its predecessor")
+    broken_at_sequence: int | None = Field(description="First event that fails, if any")
     events: list[AuditEventOut]
 
     @classmethod
@@ -268,7 +306,9 @@ class OutboxMessageOut(_Response):
 
 
 class DeclineIn(BaseModel):
-    reason: str | None = Field(default=None, max_length=500)
+    reason: str | None = Field(
+        default=None, max_length=500, examples=["The amount in section 2 is wrong."]
+    )
 
 
 class SigningSignerOut(_Response):
@@ -280,8 +320,8 @@ class SigningSignerOut(_Response):
 class SigningViewOut(_Response):
     """What a signer sees. Other signers' email addresses are not disclosed."""
 
-    envelope_id: str
-    title: str
+    envelope_id: str = Field(examples=[EXAMPLE_ID])
+    title: str = Field(examples=["Service agreement"])
     envelope_status: EnvelopeStatus
     document_sha256: str
     you: SignerOut

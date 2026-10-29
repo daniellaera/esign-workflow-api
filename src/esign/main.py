@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from esign.adapters.http.middleware import RequestContextMiddleware
+from esign.adapters.http.openapi import DESCRIPTION, TAGS
 from esign.adapters.http.problems import install_problem_handlers
 from esign.adapters.http.routes import dev, documents, envelopes, health, signing, trust
 from esign.application.ports import Clock
@@ -31,7 +32,9 @@ def create_app(settings: Settings | None = None, *, clock: Clock = utc_now) -> F
     app = FastAPI(
         title="esign-workflow-api",
         version="0.1.0",
-        summary="Sequential document signing with PAdES signatures and a tamper-evident audit.",
+        description=DESCRIPTION,
+        openapi_tags=TAGS,
+        license_info={"name": "MIT", "identifier": "MIT"},
         lifespan=lifespan,
     )
     app.add_middleware(RequestContextMiddleware)

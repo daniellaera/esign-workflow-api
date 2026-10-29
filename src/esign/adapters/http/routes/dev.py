@@ -12,7 +12,7 @@ from esign.adapters.http.security import require_api_key
 router = APIRouter(prefix="/dev", tags=["development"], dependencies=[Depends(require_api_key)])
 
 
-@router.get("/outbox/{envelope_id}")
+@router.get("/outbox/{envelope_id}", summary="Read the simulated mailbox")
 async def outbox(envelope_id: str, container: ContainerDep) -> list[OutboxMessageOut]:
     messages = await container.envelopes.outbox(envelope_id)
     return [OutboxMessageOut.from_message(m) for m in messages]

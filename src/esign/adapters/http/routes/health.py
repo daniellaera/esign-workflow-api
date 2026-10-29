@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 READINESS_TIMEOUT_SECONDS = 2.0
 
 
-@router.get("/live")
+@router.get("/live", summary="Liveness")
 async def live() -> dict[str, str]:
     """The process is up. Deliberately checks nothing else, so a database outage
     does not make Kubernetes restart healthy pods."""
     return {"status": "ok"}
 
 
-@router.get("/ready", response_model=None)
+@router.get("/ready", response_model=None, summary="Readiness")
 async def ready(request: Request, container: ContainerDep) -> dict[str, str] | JSONResponse:
     """Ready to serve traffic: MongoDB answers a ping."""
     try:
