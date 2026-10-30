@@ -77,9 +77,15 @@ Limits: {settings.max_upload_bytes // (1024 * 1024)} MB per PDF,
 {settings.rate_limit_per_minute} requests/min and
 {settings.envelope_limit_per_hour} new envelopes/hour per IP. No outgoing webhooks.
 
-**Try it:** `POST /documents` → `POST /envelopes` → `POST /envelopes/{{id}}/send` →
-`GET /envelopes/{{id}}/signing-link` → `POST /sign/{{token}}` (repeat for each signer) →
-`GET /envelopes/{{id}}/verify`.
+**Try it in 6 calls:**
+1. Click **Authorize** and paste the demo key above.
+2. `POST /documents` with a PDF as `file`. Copy `id` from the response.
+3. `POST /envelopes`: paste that `id` as `document_id`, list two signers. Copy the top-level `id`.
+4. `POST /envelopes/{{id}}/send` with the envelope `id` from step 3 (not the document id).
+5. `GET /envelopes/{{id}}/signing-link`, copy `token`, then `POST /sign/{{token}}`.
+   Repeat this step for the second signer.
+6. `GET /envelopes/{{id}}/verify` (expect `all_signatures_valid: true`), then
+   `GET /envelopes/{{id}}/document` for the signed PDF.
 
 ---
 """
