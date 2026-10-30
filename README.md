@@ -11,7 +11,7 @@ Sequential document signing: upload a PDF, add signers, collect one real PAdES s
 **[esign.daniellaera.com/docs](https://esign.daniellaera.com/docs)**: run the whole flow in Swagger. Click **Authorize** and use the public demo key `esign-demo-public-key`.
 
 - All data is deleted after 24 h. **Do not upload real or personal documents.** Signatures come from a test CA.
-- Limits: 2 MB per PDF, 5 signers per envelope, 30 requests/min and 10 new envelopes/hour per IP.
+- Limits: 2 MB per PDF, 5 signers per envelope, 120 requests/min and 30 new envelopes/hour per IP.
 - Demo only: `GET /envelopes/{id}/signing-link` returns the current signer's link, so no inbox is needed. No webhooks are sent.
 
 ![Architecture: FastAPI adapter, application core (use cases, pure domain, ports), adapters for MongoDB, storage, pyHanko and webhooks](docs/diagrams/architecture.svg)

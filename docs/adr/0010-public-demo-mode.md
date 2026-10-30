@@ -10,7 +10,7 @@ One setting, `ESIGN_DEMO_MODE`, off by default, switches on:
 
 - **Retention.** TTL indexes (named `retention_ttl`) on documents, envelopes, audit events, outbox and webhook records delete them after `ESIGN_DEMO_RETENTION` (24 h). A background task deletes PDF files older than that. The indexes are dropped and recreated at every start, so turning demo mode off removes them and never leaves a data-deleting index behind.
 - **Limits.** 2 MB uploads and 5 signers per envelope, applied in the settings validator.
-- **Rate limiting.** Per client IP, fixed windows in memory: 30 requests/minute and 10 new envelopes/hour. Over the limit: `429` problem details with `Retry-After`. `/health` is exempt.
+- **Rate limiting.** Per client IP, fixed windows in memory: 120 requests/minute and 30 new envelopes/hour, generous enough for a whole office behind one NAT address trying the demo at once. Over the limit: `429` problem details with `Retry-After`. `/health` is exempt.
 - **Client IP.** `X-Forwarded-For` is honoured only from addresses in `ESIGN_TRUSTED_PROXIES` (uvicorn's proxy-headers middleware, mounted by the app). Anyone else's header is ignored, so a client cannot dodge the limiter by spoofing it.
 - **Public API key.** `ESIGN_DEMO_API_KEY` is accepted next to the private operator key.
 - **Signing links via the API.** `GET /envelopes/{id}/signing-link` returns the current signer's link. In production, a link exists only in the signer's email; this endpoint is mounted only in demo mode.

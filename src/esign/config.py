@@ -49,8 +49,8 @@ class Settings(BaseSettings):
     demo_api_key: SecretStr | None = Field(default=None, min_length=8)
     demo_retention: timedelta = timedelta(hours=24)
     demo_cleanup_interval: timedelta = timedelta(minutes=10)
-    rate_limit_per_minute: int = Field(default=30, ge=1)
-    envelope_limit_per_hour: int = Field(default=10, ge=1)
+    rate_limit_per_minute: int = Field(default=120, ge=1)
+    envelope_limit_per_hour: int = Field(default=30, ge=1)
 
     log_level: str = "INFO"
 
