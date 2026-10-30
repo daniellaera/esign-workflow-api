@@ -50,3 +50,5 @@ def test_swagger_description_starts_with_the_demo_banner() -> None:
     assert "2 MB per PDF" in text
     assert "5 signers per envelope" in text
     assert "operator-key" not in text
+    assert "`POST /envelopes/{envelope_id}/send`" in text
+    assert "{id}" not in text

@@ -9,13 +9,6 @@ Sequential document signing with real PAdES signatures and a tamper-evident audi
 
 **Signatures come from a TEST CA and are not qualified.**
 
-## Flow
-1. `POST /documents`: upload a PDF.
-2. `POST /envelopes`: document plus signers, in signing order.
-3. `POST /envelopes/{id}/send`: the first signer gets a one-time link.
-4. Each signer: `GET /sign/{token}`, then `POST /sign/{token}` (or `/decline`).
-5. `GET /envelopes/{id}/verify` and `GET /envelopes/{id}/audit`.
-
 ## Authentication
 Management endpoints need the `X-API-Key` header (use **Authorize**).
 Signing endpoints need nothing but the token in the link.
@@ -77,15 +70,17 @@ Limits: {settings.max_upload_bytes // (1024 * 1024)} MB per PDF,
 {settings.rate_limit_per_minute} requests/min and
 {settings.envelope_limit_per_hour} new envelopes/hour per IP. No outgoing webhooks.
 
-**Try it in 6 calls:**
-1. Click **Authorize** and paste the demo key above.
-2. `POST /documents` with a PDF as `file`. Copy `id` from the response.
-3. `POST /envelopes`: paste that `id` as `document_id`, list two signers. Copy the top-level `id`.
-4. `POST /envelopes/{{id}}/send` with the envelope `id` from step 3 (not the document id).
-5. `GET /envelopes/{{id}}/signing-link`, copy `token`, then `POST /sign/{{token}}`.
-   Repeat this step for the second signer.
-6. `GET /envelopes/{{id}}/verify` (expect `all_signatures_valid: true`), then
-   `GET /envelopes/{{id}}/document` for the signed PDF.
+**Try it: one envelope, two signers**
+1. Click **Authorize** and paste the demo key.
+2. `POST /documents`: upload a PDF as `file`. Copy `id`, this is your **document_id**.
+3. `POST /envelopes`: paste it as `document_id`, keep the two example signers.
+   Copy the top-level `id`, this is your **envelope_id**. Use it in every step below.
+4. `POST /envelopes/{{envelope_id}}/send`
+5. `GET /envelopes/{{envelope_id}}/signing-link`: copy `token`.
+6. `POST /sign/{{token}}`: the first signer signs.
+7. Repeat steps 5 and 6: the link now belongs to the second signer.
+8. `GET /envelopes/{{envelope_id}}/verify`: expect `all_signatures_valid: true`.
+   `GET /envelopes/{{envelope_id}}/document` downloads the signed PDF.
 
 ---
 """
