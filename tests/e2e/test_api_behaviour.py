@@ -245,3 +245,9 @@ async def test_root_redirects_to_docs_and_is_not_documented(client: httpx.AsyncC
     assert response.status_code == 307
     assert response.headers["location"] == "/docs"
     assert "/" not in (await client.get("/openapi.json")).json()["paths"]
+
+
+async def test_swagger_ui_keeps_the_api_key_across_reloads(client: httpx.AsyncClient) -> None:
+    response = await client.get("/docs")
+    assert response.status_code == 200
+    assert '"persistAuthorization": true' in response.text

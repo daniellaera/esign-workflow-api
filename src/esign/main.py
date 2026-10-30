@@ -38,6 +38,8 @@ def create_app(settings: Settings | None = None, *, clock: Clock = utc_now) -> F
         description=description(settings),
         openapi_tags=TAGS,
         license_info={"name": "MIT", "identifier": "MIT"},
+        # Swagger UI keeps the API key in localStorage across page reloads.
+        swagger_ui_parameters={"persistAuthorization": True},
         lifespan=lifespan,
     )
     # Added innermost first: requests pass proxy headers -> request context -> rate limit.
